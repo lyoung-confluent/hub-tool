@@ -75,6 +75,34 @@ func (c *Client) GetRepositories(account string) ([]Repository, int, error) {
 	return repos, total, nil
 }
 
+//GetRepository lists a specific repository a user can access
+func (c *Client) GetRepository(repository string) (*Repository, error) {
+	if !strings.ContainsRune(repository, '/') {
+		repository = c.account + "/" + repository
+	}
+	req, err := http.NewRequest("GET", c.domain + fmt.Sprintf(RepositoriesURL, repository), nil)
+	if err != nil {
+		return nil, err
+	}
+	response, err := c.doRequest(req, withHubToken(c.token))
+	if err != nil {
+		return nil, err
+	}
+	var result hubRepositoryResult
+	if err := json.Unmarshal(response, &result); err != nil {
+		return nil, err
+	}
+
+	return &Repository{
+		Name:        fmt.Sprintf("%s/%s", result.User, result.Name),
+		Description: result.Description,
+		LastUpdated: result.LastUpdated,
+		PullCount:   result.PullCount,
+		StarCount:   result.StarCount,
+		IsPrivate:   result.IsPrivate,
+	}, nil
+}
+
 //RemoveRepository removes a repository on Hub
 func (c *Client) RemoveRepository(repository string) error {
 	req, err := http.NewRequest("DELETE", c.domain+fmt.Sprintf(DeleteRepositoryURL, repository), nil)
